@@ -1,5 +1,6 @@
 import * as React from "react"
 import { Stepper } from "./Stepper"
+import { Logo } from "./Logo"
 import { cn } from "@/lib/utils"
 
 interface LayoutProps {
@@ -30,10 +31,8 @@ export function ExplainLabLayout({
     return (
         <div className="min-h-screen bg-[#ECFEFF] flex flex-col font-sans">
             {/* Header */}
-            <header className="bg-white border-b border-slate-200 py-4 px-6 md:px-12 flex items-center shadow-sm">
-                <div className="text-2xl font-bold text-primary font-hand tracking-tight">
-                    ExplainLab
-                </div>
+            <header className="bg-white border-b border-slate-200 py-3 px-6 md:px-12 flex items-center shadow-sm sticky top-0 z-50">
+                <Logo />
                 <div className="ml-auto flex-1 flex justify-center">
                     <Stepper steps={steps} currentStep={currentStep} />
                 </div>

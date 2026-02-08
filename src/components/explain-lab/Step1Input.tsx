@@ -33,23 +33,83 @@ export function Step1Input({ value, onChange, onNext }: Step1InputProps) {
     }
 
     const fillExample = () => {
-        const example = `# 什么是 React Server Components?
+        const example = `# OpenClaw 架构概览
 
-React Server Components (RSC) 是 React 团队推出的一项新特性，旨在解决现代 Web 应用开发中的一些核心挑战。
+本文档提供了对 OpenClaw 系统的全面分析，详细说明了它是如何处理消息和管理记忆的。
 
-## 核心概念
+## 系统架构
 
-传统的 React 组件是在客户端渲染的（CSR），或者通过服务端渲染（SSR）生成 HTML Hydrate。而 RSC 允许我们在服务端运行组件，直接生成 UI 结构，发送给客户端。
+OpenClaw 采用中心辐射型架构，**Gateway (网关)** 作为中央协调器，连接负责用户输入的外部 **Channels (渠道)** 和负责逻辑与记忆的内部 **Agents (智能体)**。
 
-## 优势
+\`\`\`mermaid
+graph TD
+    User((用户)) <--> Channel[渠道插件\\n(WhatsApp/Slack/etc)]
+    
+    subgraph "OpenClaw 核心"
+        Channel <--> Gateway[网关服务器]
+        Gateway <--> SessionMgr[会话管理器]
+        Gateway <--> AgentRuntime[智能体运行时]
+    end
+    
+    subgraph "智能体大脑"
+        AgentRuntime <--> LLM[LLM 推理]
+        AgentRuntime <--> Tools[工具执行]
+        Tools <--> MemoryIndex[记忆索引管理器]
+    end
+    
+    subgraph "文件系统 / 记忆"
+        MemoryIndex <--> MemoryFiles["MEMORY.md\\nmemory/*.md"]
+        MemoryIndex <--> VectorDB[(SQLite 向量库)]
+    end
+\`\`\`
 
-1. **零 Bundle Size**: 服务端组件的代码不会打包到客户端 bundle 中。
-2. **直接访问后端资源**: 可以直接查询数据库、读取文件系统。
-3. **自动代码分割**: 根据路由自动加载需要的客户端组件。
+## 消息的生命周期
 
-## 总结
+以下是从用户发送消息到收到回复的分步处理过程。
 
-RSC 代表了 React 架构的一次重大转变，它模糊了客户端和服务端的界限，让开发者能更灵活地构建高性能应用。`
+### 1. 消息接入 (Inbound: User -> System)
+1.  **接收**: 用户发送消息（例如：“我们关于 API 的决定是什么？”）。**Channel Plugin**（如 WhatsApp）通过 Webhook 或 WebSocket 接收此消息。
+2.  **标准化**: Channel 将特定平台的负载转换为标准的 OpenClaw 消息格式。
+3.  **路由**: Channel 调用网关的 \`chat.send\` API。
+4.  **策略检查**: 网关验证会话权限和频率限制。
+
+### 2. 处理流程 (Processing: System -> Agent)
+5.  **分发**: 网关识别该会话的活动 **Agent**。
+6.  **上下文加载**: 网关加载该 Agent 对应的近期聊天记录。
+7.  **调用**: Agent Runtime 接收消息和历史记录作为 Prompt。
+
+### 3. 推理与记忆 (The "Brain")
+8.  **思考**: Agent (LLM) 分析用户的意图。
+9.  **记忆查找**: 识别到需要上下文，Agent 调用 \`memory_search\` 工具。
+    *   **向量搜索**: \`MemoryIndexManager\` 在 SQLite 向量库中查询语义匹配项。
+    *   **关键词搜索**: 同时运行全文搜索 (FTS)。
+    *   **检索**: \`MEMORY.md\` 或 \`memory/*.md\` 中最相关的片段被返回给 Agent。
+10. **合成**: Agent 结合用户的问题和检索到的记忆片段生成回复。
+
+### 4. 消息触达 (Outbound: System -> User)
+11. **流式传输**: Agent 将生成的回复以实时分块 (Deltas) 的形式流式传输回网关。
+12. **广播**: 网关将这些事件广播给 Channel。
+13. **投递**: Channel Plugin 将最终文本传输给外部平台 API。
+14. **用户视图**: 用户看到回复，可能带有指向源记忆文件的引用。
+
+## 关键组件
+
+### 网关 (\`src/gateway\`)
+系统的核心。负责：
+- **协议**: 标准化节点间的通信。
+- **安全**: 所有请求的身份验证和授权。
+- **插件**: 加载和管理 Channel 及 Capability 插件。
+
+### 智能体运行时 (\`src/agents\`)
+智能的执行环境。它充当 LLM 的“操作系统”，为其提供：
+- **工具**: 执行操作的接口（如 \`memory_search\`）。
+- **身份**: 管理角色设定和系统提示词 (System Prompt)。
+
+### 记忆系统 (\`src/memory\`)
+以文件为核心的知识库。
+- **存储**: 工作区中的纯 Markdown 文件。
+- **索引**: 自动在后台将文件变更索引到向量库 (SQLite)。
+- **检索**: 混合搜索 (向量 + 关键词)，确保高召回率和精确度。`
         onChange(example)
     }
 
